@@ -1,0 +1,154 @@
+#include <iostream.h>
+#include <time.h>
+#include <ctype.h>
+#include <pthread.h>
+
+// ------------------------------------------------
+// Specific area dediicated for lamps specific steps 
+// Functions declaration 
+inline bool bitRead(Registers reg, uint32_t bits);
+inline int getLampMode();
+inline int getConfStepsLamp1();
+inline int getConfStepsLamp2();
+inline int getConfStepsLamp3();
+void runTimer(unsigned long seconds);
+
+
+enum Registers
+{
+    LAMP_TYPE = 0x0A, 
+    CTRL_REG1  = 0x0B, 
+    CTRL_REG2  = 0x0C,
+    CTRL_REG3  = 0x0D, 
+    CTRL_REG4  = 0x0E,
+    LAMP_MODE  = 0x0F
+};
+
+// to employ multithreading 
+struct arg_struct {
+            unsigned long seconds;
+       };
+
+inline bool bitRead(Registers reg, uint32_t bits)
+{
+  uint32_t       regval = *regAddress(reg);
+  const uint32_t val  = regval & bits;
+  if(val>0)
+      return true;
+  return false;
+}
+
+inline int getLampMode()
+{
+   if (bitRead(LAMP_TYPE, 1)){
+        cout << " first lamp " << endl;
+        return 1;}
+   else if (bitRead(LAMP_TYPE, 2)){
+        cout << " second lamp " << endl;
+        return 2;}
+   else if (bitRead(LAMP_TYPE, 3)){
+        cout << " third lamp " << endl;
+        return 3;}
+}
+
+inline int getConfStepsLamp1()
+{
+   if (bitRead(CTRL_REG3, 0x00) && (bitRead(CTRL_REG1, 0xE1) && (bitRead(CTRL_REG2, 0x05)){
+        cout << " sense code write step 3" << endl;
+        return 3;}
+   else if (bitRead(CTRL_REG3, 0x00) && (bitRead(CTRL_REG1, 0xE1)){
+        cout << " sense code write step 2" << endl;
+        return 2;}
+   else if (bitRead(CTRL_REG3, 0x00)){
+        cout << " sense code write step 1" << endl;
+        return 1;}
+}
+inline int getConfStepsLamp2()
+{
+   if (bitRead(CTRL_REG4, 0xFD) && (bitRead(CTRL_REG1, 0x00) && (bitRead(CTRL_REG2, 0x0D)){
+        cout << " sense code write step 3" << endl;
+        return 3;}
+   else if (bitRead(CTRL_REG2, 0x0D) && (bitRead(CTRL_REG1, 0x00)){
+        cout << " sense code write step 2" << endl;
+        return 2;}
+   else if (bitRead(CTRL_REG1, 0x00)){
+        cout << " sense code write step 1" << endl;
+        return 1;}
+}
+inline int getConfStepsLamp3()
+{
+   if (bitRead(CTRL_REG4, 0x00) && (bitRead(CTRL_REG1, 0x02) && (bitRead(CTRL_REG3, 0x05)){
+        cout << " sense code write step 4" << endl;
+        return 4;}
+   else if (bitRead(CTRL_REG4, 0x00)&& (bitRead(CTRL_REG3, 0x07)){
+        cout << " sense code write step 3" << endl;
+        return 3;}
+   else if (bitRead(CTRL_REG4, 0x00)){
+        cout << " sense code write step 2" << endl;
+        return 1;}
+
+}
+// ------------------------------------------------
+
+
+
+
+// Working classes
+class timer {
+	private:
+		unsigned long begTime;
+	public:
+		void start() {
+			begTime = clock();
+		}
+
+		unsigned long elapsedTime() {
+			return ((unsigned long) clock() - begTime) / (CLOCKS_PER_SEC/1000);
+		}
+
+		bool isTimeout(unsigned long seconds) {
+			return seconds >= elapsedTime();
+		}
+};
+
+void runTimer(unsigned long seconds) {
+    timer t;
+	t.start();
+    //lets see lamp mode
+    int mode = getLampMode();
+    //lets see status
+    while(true) {
+		if(t.elapsedTime() >= seconds) {
+			break;
+		}
+		else {
+			if(mode==1)
+                getConfStepsLamp1();
+			if(mode==2)
+                getConfStepsLamp1();
+			if(mode==3)
+                getConfStepsLamp1();
+		}
+	}
+}
+
+
+void main() {
+    cout << " Enter required time for lamp status registering or press enter(default value is 10 sec) " << endl;
+	unsigned long seconds = 10;
+    unsigned long i = 10;
+    cin >> i;
+    if(isdigit(i))
+        seconds = i;
+	
+	cout << "lamps timer started " << endl;
+	pthread_t thread;
+    struct arg_struct *args = calloc(1, sizeof(struct arg_struct));
+    args->seconds = seconds;
+    if (pthread_create(&threads[i], NULL, &runTimer, (void *)args) != 0)
+        fprintf(stdout, "ERROR, look up function failed to start");
+    pthread_join(threads, NULL);
+
+	cout << seconds <<  " lookup time elapsed" << endl;
+	cin >> seconds;	// it's just to stop the execution and look at the output
+}
